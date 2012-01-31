@@ -122,7 +122,35 @@ class AGoodle(object):
         a = self.read_array_bbox(bbox)
         a.mask_with_poly(pts, copy=False)
         return a.do_stats()
-
+        
+    def masked_numpy(self, wkt, wkt_epsg=None, this_epsg=None, mask_value=-9999.):
+        """
+        Mimick summarize_wkt() but return a numpy array of the data without the spatial information.
+        You can specify a masked value. This method was developed so you could call compressed() on
+        its output, making the output a single dimension and available for stats.
+        
+        masked_numpy() makes it possible to work with continious data.
+        
+        It returns a numpy masked array
+        """
+        this_sr = osr.SpatialReference()
+        wkt_sr = osr.SpatialReference()
+        if this_epsg is None:
+          pr = self.raster.GetProjection()
+          this_sr.ImportFromWkt(pr)
+        else:
+          this_sr.ImportFromEPSG(this_epsg)
+        if wkt_epsg is None:
+          pr = self.raster.GetProjection()
+          wkt_sr.ImportFromWkt(pr)
+        else:
+          wkt_sr.ImportFromEPSG(wkt_epsg)
+          
+        pts, bbox = points_from_wkt(wkt, wkt_epsg, this_sr)
+        a = self.read_array_bbox(bbox)
+        masked_data = a.mask_with_poly(pts, copy=True, mask_value=mask_value)
+        return np.ma.masked_values(masked_data, mask_value)
+        
     def circle_mask(self, cradius, mask):
          xs, ys = np.mgrid[-cradius:cradius + 1
                             , -cradius:cradius + 1]
